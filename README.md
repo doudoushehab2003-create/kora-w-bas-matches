@@ -1,4 +1,4 @@
-# KORA W BAS · match updater
+# Kaweera · match updater
 
 A small job that runs on GitHub every 15 minutes (free) and keeps the app's daily football data fresh in Firebase:
 
@@ -27,3 +27,30 @@ GitHub pauses scheduled workflows in repositories with no activity for 60 days. 
 ```bash
 npm test
 ```
+
+## Daily sign-up email
+
+`.github/workflows/signup-digest.yml` emails the owner a list of players who signed up in the last
+24 hours (username + email only; passwords are never stored in readable form). Add these repository
+secrets (Settings → Secrets and variables → Actions):
+
+- `FIREBASE_SERVICE_ACCOUNT` (already used by the match updater)
+- `SMTP_USER` – a Gmail address that sends the mail
+- `SMTP_PASS` – a Gmail **app password** for it (not the normal password)
+- `DIGEST_TO` – the address that receives the digest
+
+Run it any time from Actions → "Daily sign-up email" → Run workflow.
+
+The query needs a Firestore index on `users.createdAt`; a single-field range needs none.
+
+## Push notifications (`.github/workflows/push.yml`)
+
+Every 15 minutes `src/runPush.js` sends the app's Web Push notifications: the Thursday contest (from 10:00 Cairo),
+results confirmed in the Manager, and an evening reminder for streaks that would break tonight.
+It needs two repository secrets (Settings → Secrets and variables → Actions):
+
+- `FIREBASE_SERVICE_ACCOUNT`: the whole service-account JSON (the same one the match job uses).
+- `VAPID_PRIVATE_KEY`: the `privateKey` from `kaweera-server/push-vapid.json` on the owner's Mac.
+  The matching public key is in `src/push.js` and in the app (`src/online/push.ts`).
+
+Until both are set the job skips without failing.
