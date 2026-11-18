@@ -44,6 +44,11 @@ const TEXT = {
     fr: ['🔥 Gardez votre série', (n) => `Jouez une partie aujourd'hui pour garder votre série de ${n} jours.`],
   },
 };
+TEXT.comeback = {
+  en: ['⚡ Double XP is waiting', "You've been away a few days: your next game gives double XP."],
+  ar: ['⚡ دبل XP مستنيك', 'غبت كام يوم: الماتش الجاي بتاخد فيه XP دبل.'],
+  fr: ['⚡ XP doublé vous attend', 'Quelques jours sans jouer : votre prochaine partie rapporte le double d\'XP.'],
+};
 TEXT.news = { en: '📰 Football news', ar: '📰 أخبار الكورة', fr: '📰 Actu foot' };
 const pick = (o, lang) => o[lang] ?? o.en;
 
@@ -133,6 +138,18 @@ export async function runPush({ db, send, now = Date.now(), news = fetchNews }) 
     } catch (e) {
       console.warn('news failed', e?.message);
     }
+  }
+
+  // 6. Comeback: players whose last game was 4 days ago (3 full days away) hear about double XP, once.
+  if (hour >= 18 && state.comebackDay !== day) {
+    const away = await db.collection('streaks').where('day', '==', day - 4).get();
+    for (const d of away.docs) {
+      for (const s of byUid(d.id)) {
+        const [title, body] = pick(TEXT.comeback, s.lang);
+        if (await deliver(s, title, body)) out.comeback = (out.comeback ?? 0) + 1;
+      }
+    }
+    next.comebackDay = day;
   }
 
   // 5. New sign-ups since the last run, to the owner's Manager devices.
